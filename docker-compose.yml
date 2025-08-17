@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: Telegram
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123_00
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d Telegram" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  bot:
+    build: .
+    container_name: telega_bot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DB_PASSWORD=postgres123_00
+    volumes:
+      - ./main.py:/app/main.py
+      - ./database.py:/app/database.py
+      - ./qpt.py:/app/qpt.py
+      - ./ai.py:/app/ai.py
+    networks:
+      - app_network
+    command: ["python", "main.py"]
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  pg_data:
